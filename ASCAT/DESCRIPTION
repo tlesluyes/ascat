@@ -28,7 +28,8 @@ Depends:
     parallel,
     doParallel,
     foreach,
-    utils
+    utils,
+    Cairo
 License: GPL-3
 LazyLoad: yes
 RoxygenNote: 7.1.1

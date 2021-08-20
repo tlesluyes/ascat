@@ -24,3 +24,9 @@ div <- function(a, b, c){
 #     v = c;
 # end
 #end
+
+# graph setting
+if (!capabilities()["X11"]) {
+  pdf = Cairo::CairoPDF
+  png = Cairo::CairoPNG
+}

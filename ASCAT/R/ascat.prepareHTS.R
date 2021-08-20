@@ -56,19 +56,19 @@ ascat.getBAFsAndLogRs = function(samplename, tumourAlleleCountsFile.prefix, norm
   allele_data = readG1000SnpFiles(g1000file.prefix, ".txt", chrom_names)
   # Synchronise DFs
   matched_data = Reduce(intersect, list(rownames(tumour_input_data), rownames(normal_input_data), rownames(allele_data)))
-  tumour_input_data = tumour_input_data[rownames(tumour_input_data) %in% matched_data,]
-  normal_input_data = normal_input_data[rownames(normal_input_data) %in% matched_data,]
-  allele_data = allele_data[rownames(allele_data) %in% matched_data,]
+  tumour_input_data = tumour_input_data[matched_data,]
+  normal_input_data = normal_input_data[matched_data,]
+  allele_data = allele_data[matched_data,]
   rm(matched_data)
   # If a probloci file is provided, remove those
   if (!is.na(probloci_file)) {
     stopifnot(file.exists(probloci_file) && file.info(probloci_file)$size>0)
     probloci=data.frame(readr::read_tsv(probloci_file,col_names=T,col_types='ci',progress=F),stringsAsFactors=F)
     probloci=paste0(probloci[,1],'_',probloci[,2])
-    probloci=which(rownames(tumour_input_data) %in% probloci)
-    if (length(probloci>0)) {
-      tumour_input_data = tumour_input_data[-probloci,]
-      normal_input_data = normal_input_data[-probloci,]
+    probloci=rownames(tumour_input_data) %in% probloci
+    if (sum(probloci>0)) {
+      tumour_input_data = tumour_input_data[!probloci,]
+      normal_input_data = normal_input_data[!probloci,]
       allele_data = allele_data[-probloci,]
     }
     rm(probloci)
@@ -167,19 +167,27 @@ ascat.synchroniseFiles=function(samplename,tumourLogR_file,tumourBAF_file,normal
   normalBAF=normalBAF[!is.na(normalBAF[,3]),]
   # get IDs shared between DFs
   IDs=Reduce(intersect, list(rownames(tumourLogR),rownames(tumourBAF),rownames(normalLogR),rownames(normalBAF)))
-  tumourLogR=tumourLogR[rownames(tumourLogR) %in% IDs,]
-  tumourBAF=tumourBAF[rownames(tumourBAF) %in% IDs,]
-  normalLogR=normalLogR[rownames(normalLogR) %in% IDs,]
-  normalBAF=normalBAF[rownames(normalBAF) %in% IDs,]
+  tumourLogR=tumourLogR[IDs,]
+  tumourBAF=tumourBAF[IDs,]
+  normalLogR=normalLogR[IDs,]
+  normalBAF=normalBAF[IDs,]
   rm(IDs)
   # check whether DFs have been synchronised
   stopifnot(identical(tumourLogR[,1],tumourBAF[,1]) && identical(tumourLogR[,1],normalLogR[,1]) && identical(tumourLogR[,1],normalBAF[,1]))
   stopifnot(identical(tumourLogR[,2],tumourBAF[,2]) && identical(tumourLogR[,2],normalLogR[,2]) && identical(tumourLogR[,2],normalBAF[,2]))
   # write output
+  # remove files firstly to avoid error similar to
+  #  *** caught bus error ***
+  # address 0x7f7bac4c602d, cause 'non-existent physical address'
+  unlink(c(tumourLogR_file, tumourBAF_file, normalLogR_file, normalBAF_file))
+
   write.table(tumourLogR,file=tumourLogR_file,sep='\t',quote=F,row.names=T,col.names=NA)
   write.table(tumourBAF,file=tumourBAF_file,sep='\t',quote=F,row.names=T,col.names=NA)
   write.table(normalLogR,file=normalLogR_file,sep='\t',quote=F,row.names=T,col.names=NA)
   write.table(normalBAF,file=normalBAF_file,sep='\t',quote=F,row.names=T,col.names=NA)
+
+  # clean temporary files
+  unlink(list.files(pattern = "alleleFrequencies"))
 }
 
 #' Extract both logR and BAF values from sequencing data

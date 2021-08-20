@@ -129,12 +129,28 @@ ascat.GCcorrect = function(ASCATobj, GCcontentfile = NULL, replictimingfile = NU
 #' @noRd
 readCorrectionFile=function(correction_file) {
   if (file.exists(correction_file) && file.info(correction_file)$size>0) {
-    header=as.character(readr::read_delim(file=correction_file, delim='\t', col_names=F, n_max=1, skip=0, col_types = readr::cols()))[-1]
-    tmp=readr::read_tsv(file=correction_file,col_names=F,progress=F,col_types=paste0('cci',paste(rep('d',length(header)-2),collapse='')),skip=1)
-    tmp=data.frame(tmp,stringsAsFactors=F)
-    rownames(tmp)=tmp[,1]
-    tmp[,1]=NULL
-    colnames(tmp)=header
+    head1=as.character(readr::read_delim(file=correction_file, delim='\t', col_names=F, n_max=1, skip=0, col_types = readr::cols()))
+
+    if (head1[1] == "NA") {
+      head1=head1[-1]
+      tmp=readr::read_tsv(file=correction_file,col_names=F,progress=F,col_types=paste0('cci',paste(rep('d',length(head1)-2),collapse='')),skip=1)
+      tmp=data.frame(tmp,stringsAsFactors=F)
+      rownames(tmp)=tmp[,1]
+      tmp[,1]=NULL
+    } else {
+      # Construct rownames (id) from location
+      head2=as.character(readr::read_delim(file=correction_file, delim='\t', col_names=F, n_max=1, skip=1, col_types = readr::cols()))
+      if (length(head2) > length(head1)) {
+        tmp=readr::read_tsv(file=correction_file,col_names=F,progress=F,col_types=paste0('cci',paste(rep('d',length(head1)-2),collapse='')),skip=1)
+        tmp[[1]]=NULL
+      } else {
+        tmp=readr::read_tsv(file=correction_file,col_names=F,progress=F,col_types=paste0('ci',paste(rep('d',length(head1)-2),collapse='')),skip=1)
+      }
+      tmp=as.data.frame(tmp, stringsAsFactors=F)
+      rownames(tmp)=paste0(tmp[[1]], "_", tmp[[2]])
+    }
+
+    colnames(tmp)=head1
     colnames(tmp)[1:2]=c("Chr","Position")
     return(tmp)
   } else {
