@@ -135,7 +135,7 @@ ascat.getBAFsAndLogRs = function(samplename, tumourAlleleCountsFile.prefix, norm
   rm(selector)
   # For males, chrX needs to be adjusted as logR baseline will be 0 because of T/N ratio. Add -1 to logR here so gamma=1 in ascat.runAscat will get CN states.
   if (gender=='XY') {
-    tumourLogR[which(allele_data$chromosome=='X')]=tumourLogR[which(allele_data$chromosome=='X')]-1
+    tumourLogR[allele_data$chromosome=='X']=tumourLogR[allele_data$chromosome=='X']-1
   }
   # Create the output data.frames
   tumor.LogR = data.frame(Chromosome=allele_data$chromosome, Position=allele_data$position, logr=tumourLogR, ID=rownames(allele_data), row.names=4, stringsAsFactors=F)
