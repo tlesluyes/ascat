@@ -20,6 +20,7 @@ ascat.prepareHTS(
   minCounts = 10,
   BED_file = NA,
   probloci_file = NA,
+  gender = "XX",
   chrom_names = c(1:22, "X"),
   min_base_qual = 20,
   min_map_qual = 35,
@@ -58,6 +59,8 @@ ascat.prepareHTS(
 \item{BED_file}{A BED file for only looking at SNPs within specific intervals (optional, default=NA).}
 
 \item{probloci_file}{A file (chromosome <tab> position; no header) containing specific loci to ignore (optional, default=NA).}
+
+\item{gender}{Gender information, either 'XX' (=female) or 'XY' (=male).}
 
 \item{chrom_names}{A vector containing the names of chromosomes to be considered (optional, default=c(1:22,'X')).}
 

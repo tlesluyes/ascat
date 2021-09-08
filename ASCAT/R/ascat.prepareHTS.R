@@ -216,6 +216,7 @@ ascat.synchroniseFiles=function(samplename,tumourLogR_file,tumourBAF_file,normal
 #' @param minCounts Minimum depth required in the normal for a SNP to be considered (optional, default=10).
 #' @param BED_file A BED file for only looking at SNPs within specific intervals (optional, default=NA).
 #' @param probloci_file A file (chromosome <tab> position; no header) containing specific loci to ignore (optional, default=NA).
+#' @param gender Gender information, either 'XX' (=female) or 'XY' (=male).
 #' @param chrom_names A vector containing the names of chromosomes to be considered (optional, default=c(1:22,'X')).
 #' @param min_base_qual Minimum base quality required for a read to be counted (optional, default=20).
 #' @param min_map_qual Minimum mapping quality required for a read to be counted (optional, default=35).
@@ -226,7 +227,7 @@ ascat.synchroniseFiles=function(samplename,tumourLogR_file,tumourBAF_file,normal
 #' @export
 ascat.prepareHTS = function(tumourseqfile, normalseqfile, tumourname, normalname, allelecounter_exe, g1000allelesprefix, g1000lociprefix,
                             nthreads=1, tumourLogR_file=NA, tumourBAF_file=NA, normalLogR_file=NA, normalBAF_file=NA, minCounts=10, BED_file=NA,
-                            probloci_file=NA, chrom_names=c(1:22,'X'), min_base_qual=20, min_map_qual=35, ref.fasta=NA,
+                            probloci_file=NA, gender="XX", chrom_names=c(1:22,'X'), min_base_qual=20, min_map_qual=35, ref.fasta=NA,
                             skip_allele_counting_tumour=F, skip_allele_counting_normal=F) {
   requireNamespace("foreach")
   requireNamespace("doParallel")
@@ -271,6 +272,7 @@ ascat.prepareHTS = function(tumourseqfile, normalseqfile, tumourname, normalname
                         normalLogR_file=normalLogR_file,
                         normalBAF_file=normalBAF_file,
                         g1000file.prefix=g1000allelesprefix,
+                        gender=gender,
                         chrom_names=chrom_names,
                         minCounts=minCounts,
                         BED_file=BED_file,
