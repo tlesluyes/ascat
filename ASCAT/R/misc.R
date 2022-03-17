@@ -24,3 +24,11 @@ div <- function(a, b, c){
 #     v = c;
 # end
 #end
+
+# graph setting
+#   when X11 is not supported in R
+#   use Cairo instead
+if (!capabilities()["X11"]) {
+  pdf = Cairo::CairoPDF
+  png = Cairo::CairoPNG
+}
