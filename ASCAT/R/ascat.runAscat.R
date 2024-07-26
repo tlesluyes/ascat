@@ -15,6 +15,7 @@
 #' @param img.dir directory in which figures will be written
 #' @param img.prefix prefix for figure names
 #' @param write_segments Optional flag to output segments in text files (.segments_raw.txt and .segments.txt under img.dir). Default=F
+#' @param normal_ploidy The normal ploidy. Default=2
 #' @details Note: for copy number only probes, nA contains the copy number value and nB = 0.
 #' @return an ASCAT output object, containing:\cr
 #' 1. nA: copy number of the A allele\cr
@@ -30,7 +31,7 @@
 #'
 #' @export
 #'
-ascat.runAscat = function(ASCATobj, gamma = 0.55, pdfPlot = FALSE, y_limit = 5, circos=NA, min_ploidy=1.5, max_ploidy=5.5, min_purity=0.1, max_purity=1.05, rho_manual = NA, psi_manual = NA, img.dir=".", img.prefix="", write_segments=FALSE) {
+ascat.runAscat = function(ASCATobj, gamma = 0.55, pdfPlot = FALSE, y_limit = 5, circos=NA, min_ploidy=1.5, max_ploidy=5.5, min_purity=0.1, max_purity=1.05, rho_manual = NA, psi_manual = NA, img.dir=".", img.prefix="", write_segments=FALSE, normal_ploidy=2) {
   goodarrays=NULL
   N_samples=dim(ASCATobj$Tumor_LogR)[2]
   res = vector("list", N_samples)
@@ -63,7 +64,7 @@ ascat.runAscat = function(ASCATobj, gamma = 0.55, pdfPlot = FALSE, y_limit = 5, 
     res[[arraynr]] = runASCAT(lrr, baf, lrrsegm, bafsegm, ASCATobj$gender[arraynr], ASCATobj$SNPpos, ASCATobj$ch, ASCATobj$chrs, ASCATobj$sexchromosomes, failedqualitycheck,
                               file.path(img.dir, paste(img.prefix, ASCATobj$samples[arraynr], ".sunrise.png", sep="")), file.path(img.dir, paste(img.prefix, ASCATobj$samples[arraynr], ".ASCATprofile.", ending, sep="")),
                               file.path(img.dir, paste(img.prefix, ASCATobj$samples[arraynr], ".rawprofile.", ending, sep="")), NA,
-                              gamma, rho_manual[arraynr], psi_manual[arraynr], pdfPlot, y_limit, circosName, min_ploidy, max_ploidy, min_purity, max_purity, ASCATobj$X_nonPAR)
+                              gamma, rho_manual[arraynr], psi_manual[arraynr], pdfPlot, y_limit, circosName, min_ploidy, max_ploidy, min_purity, max_purity, ASCATobj$X_nonPAR, normal_ploidy)
     if (!is.na(res[[arraynr]]$rho)) {
       goodarrays[length(goodarrays)+1] = arraynr
     }
@@ -210,6 +211,7 @@ ascat.runAscat = function(ASCATobj, gamma = 0.55, pdfPlot = FALSE, y_limit = 5, 
 #' @param min_purity a numerical parameter determining the minimum boundary of the purity solution search space. Default=0.1
 #' @param max_purity a numerical parameter determining the maximum boundary of the purity solution search space. Default=1.05
 #' @param X_nonPAR Optional vector containing genomic coordinates (start & stop) of nonPAR region on X. Default=NULL
+#' @param normal_ploidy the normal ploidy. Default=2
 #'
 #' @keywords internal
 #'
@@ -221,7 +223,7 @@ ascat.runAscat = function(ASCATobj, gamma = 0.55, pdfPlot = FALSE, y_limit = 5, 
 runASCAT = function(lrr, baf, lrrsegmented, bafsegmented, gender, SNPpos, chromosomes, chrnames, sexchromosomes, failedqualitycheck = FALSE,
                     distancepng = NA, copynumberprofilespng = NA, nonroundedprofilepng = NA, aberrationreliabilitypng = NA, gamma = 0.55,
                     rho_manual = NA, psi_manual = NA, pdfPlot = FALSE, y_limit = 5, circos=NA, min_ploidy=1.5, max_ploidy=5.5, min_purity=0.1,
-                    max_purity=1.05, X_nonPAR=NULL) {
+                    max_purity=1.05, X_nonPAR=NULL, normal_ploidy=2) {
   ch = chromosomes
   chrs = chrnames
   b = bafsegmented
@@ -234,7 +236,7 @@ runASCAT = function(lrr, baf, lrrsegmented, bafsegmented, gender, SNPpos, chromo
   r2 = r[autoprobes]
 
   s = make_segments(r2, b2)
-  d = create_distance_matrix(s, gamma, min_ploidy=min_ploidy, max_ploidy=max_ploidy, min_purity=min_purity, max_purity=max_purity)
+  d = create_distance_matrix(s, gamma, min_ploidy=min_ploidy, max_ploidy=max_ploidy, min_purity=min_purity, max_purity=max_purity, normal_ploidy=normal_ploidy)
   plot_d=d
 
   TheoretMaxdist = sum(rep(0.25, dim(s)[1]) * s[, "length"] * ifelse(s[, "b"]==0.5, 0.05, 1), na.rm=TRUE)
@@ -276,8 +278,8 @@ runASCAT = function(lrr, baf, lrrsegmented, bafsegmented, gender, SNPpos, chromo
         if (min(seld) > m) {
           psi = as.numeric(rownames(d)[i])
           rho = as.numeric(colnames(d)[j])
-          nA = (rho-1 - (s[, "b"]-1)*2^(s[, "r"]/gamma) * ((1-rho)*2+rho*psi))/rho
-          nB = (rho-1 + s[, "b"]*2^(s[, "r"]/gamma) * ((1-rho)*2+rho*psi))/rho
+          nA = ((rho-1)*normal_ploidy/2 - (s[, "b"]-1)*2^(s[, "r"]/gamma) * ((1-rho)*normal_ploidy+rho*psi))/rho
+          nB = ((rho-1)*normal_ploidy/2 + s[, "b"]*2^(s[, "r"]/gamma) * ((1-rho)*normal_ploidy+rho*psi))/rho
 
           # ploidy is recalculated based on results, to avoid bias (due to differences in normalization of LogR)
           ploidy = sum((nA+nB) * s[, "length"]) / sum(s[, "length"])
@@ -305,8 +307,8 @@ runASCAT = function(lrr, baf, lrrsegmented, bafsegmented, gender, SNPpos, chromo
           if (min(seld) > m) {
             psi = as.numeric(rownames(d)[i])
             rho = as.numeric(colnames(d)[j])
-            nA = (rho-1 - (s[, "b"]-1)*2^(s[, "r"]/gamma) * ((1-rho)*2+rho*psi))/rho
-            nB = (rho-1 + s[, "b"]*2^(s[, "r"]/gamma) * ((1-rho)*2+rho*psi))/rho
+            nA = ((rho-1)*normal_ploidy/2 - (s[, "b"]-1)*2^(s[, "r"]/gamma) * ((1-rho)*normal_ploidy+rho*psi))/rho
+            nB = ((rho-1)*normal_ploidy/2 + s[, "b"]*2^(s[, "r"]/gamma) * ((1-rho)*normal_ploidy+rho*psi))/rho
 
             # ploidy is recalculated based on results, to avoid bias (due to differences in normalization of LogR)
             ploidy = sum((nA+nB) * s[, "length"]) / sum(s[, "length"])
@@ -342,8 +344,8 @@ runASCAT = function(lrr, baf, lrrsegmented, bafsegmented, gender, SNPpos, chromo
           if (min(seld) > m) {
             psi = as.numeric(rownames(d)[i])
             rho = as.numeric(colnames(d)[j])
-            nA = (rho-1 - (s[, "b"]-1)*2^(s[, "r"]/gamma) * ((1-rho)*2+rho*psi))/rho
-            nB = (rho-1 + s[, "b"]*2^(s[, "r"]/gamma) * ((1-rho)*2+rho*psi))/rho
+            nA = ((rho-1)*normal_ploidy/2 - (s[, "b"]-1)*2^(s[, "r"]/gamma) * ((1-rho)*normal_ploidy+rho*psi))/rho
+            nB = ((rho-1)*normal_ploidy/2 + s[, "b"]*2^(s[, "r"]/gamma) * ((1-rho)*normal_ploidy+rho*psi))/rho
 
             # ploidy is recalculated based on results, to avoid bias (due to differences in normalization of LogR)
             ploidy = sum((nA+nB) * s[, "length"]) / sum(s[, "length"])
@@ -378,8 +380,8 @@ runASCAT = function(lrr, baf, lrrsegmented, bafsegmented, gender, SNPpos, chromo
           if (min(seld) > m) {
             psi = as.numeric(rownames(d)[i])
             rho = as.numeric(colnames(d)[j])
-            nA = (rho-1 - (s[, "b"]-1)*2^(s[, "r"]/gamma) * ((1-rho)*2+rho*psi))/rho
-            nB = (rho-1 + s[, "b"]*2^(s[, "r"]/gamma) * ((1-rho)*2+rho*psi))/rho
+            nA = ((rho-1)*normal_ploidy/2 - (s[, "b"]-1)*2^(s[, "r"]/gamma) * ((1-rho)*normal_ploidy+rho*psi))/rho
+            nB = ((rho-1)*normal_ploidy/2 + s[, "b"]*2^(s[, "r"]/gamma) * ((1-rho)*normal_ploidy+rho*psi))/rho
 
             # ploidy is recalculated based on results, to avoid bias (due to differences in normalization of LogR)
             ploidy = sum((nA+nB) * s[, "length"]) / sum(s[, "length"])
@@ -408,8 +410,8 @@ runASCAT = function(lrr, baf, lrrsegmented, bafsegmented, gender, SNPpos, chromo
     rho = rho_manual
     psi = psi_manual
 
-    nA = (rho-1 - (s[, "b"]-1)*2^(s[, "r"]/gamma) * ((1-rho)*2+rho*psi))/rho
-    nB = (rho-1 + s[, "b"]*2^(s[, "r"]/gamma) * ((1-rho)*2+rho*psi))/rho
+    nA = ((rho-1)*normal_ploidy/2 - (s[, "b"]-1)*2^(s[, "r"]/gamma) * ((1-rho)*normal_ploidy+rho*psi))/rho
+    nB = ((rho-1)*normal_ploidy/2 + s[, "b"]*2^(s[, "r"]/gamma) * ((1-rho)*normal_ploidy+rho*psi))/rho
 
     # ploidy is recalculated based on results, to avoid bias (due to differences in normalization of LogR)
     ploidy = sum((nA+nB) * s[, "length"]) / sum(s[, "length"])
@@ -476,13 +478,13 @@ runASCAT = function(lrr, baf, lrrsegmented, bafsegmented, gender, SNPpos, chromo
     nullprobes = SNPposhet[, 1] %in% nullchrs
 
     nAfull = ifelse(diploidprobes,
-                    (rho-1 - (b-1)*2^(r/gamma) * ((1-rho)*2+rho*psi))/rho,
+                    ((rho-1)*normal_ploidy/2 - (b-1)*2^(r/gamma) * ((1-rho)*normal_ploidy+rho*psi))/rho,
                     ifelse(nullprobes, 0,
-                           ifelse(b<0.5, (rho-1 + ((1-rho)*2+rho*psi)*2^(r/gamma))/rho, 0)))
+                           ifelse(b<0.5, ((rho-1)*normal_ploidy/2 + ((1-rho)*normal_ploidy+rho*psi)*2^(r/gamma))/rho, 0)))
     nBfull = ifelse(diploidprobes,
-                    (rho-1+b*2^(r/gamma) * ((1-rho)*2+rho*psi))/rho,
+                    ((rho-1)*normal_ploidy/2 + b*2^(r/gamma) * ((1-rho)*normal_ploidy+rho*psi))/rho,
                     ifelse(nullprobes, 0,
-                           ifelse(b<0.5, 0, (rho-1 + ((1-rho)*2+rho*psi)*2^(r/gamma))/rho)))
+                           ifelse(b<0.5, 0, ((rho-1)*normal_ploidy/2 + ((1-rho)*normal_ploidy+rho*psi)*2^(r/gamma))/rho)))
     nA = pmax(round(nAfull), 0)
     nB = pmax(round(nBfull), 0)
 
@@ -568,10 +570,10 @@ runASCAT = function(lrr, baf, lrrsegmented, bafsegmented, gender, SNPpos, chromo
       }
 
       nAraw = ifelse(diploidprobes[start],
-                     (rho-1 - (bafke-1)*2^(logR/gamma) * ((1-rho)*2+rho*psi)) / rho,
+                     ((rho-1)*normal_ploidy/2 - (bafke-1)*2^(logR/gamma) * ((1-rho)*normal_ploidy+rho*psi))/rho,
                      ifelse(nullprobes[start], 0,
-                            (rho-1 + ((1-rho)*2+rho*psi)*2^(logR/gamma))/rho))
-      nBraw = ifelse(diploidprobes[start], (rho-1+bafke*2^(logR/gamma) * ((1-rho)*2+rho*psi))/rho, 0)
+                            ((rho-1)*normal_ploidy/2 + ((1-rho)*normal_ploidy+rho*psi)*2^(logR/gamma))/rho))
+      nBraw = ifelse(diploidprobes[start], ((rho-1)*normal_ploidy/2+bafke*2^(logR/gamma) * ((1-rho)*normal_ploidy+rho*psi))/rho, 0)
       # correct for negative values:
       if (nAraw+nBraw<0) {
         nAraw = 0
@@ -712,12 +714,12 @@ runASCAT = function(lrr, baf, lrrsegmented, bafsegmented, gender, SNPpos, chromo
       nullprobes = SNPposhet[, 1] %in% nullchrs
 
       rBacktransform = ifelse(diploidprobes,
-                              gamma*log((rho * (nA+nB) + (1-rho)*2) / ((1-rho)*2+rho*psi), 2),
+                              gamma*log((rho * (nA+nB) + (1-rho)*normal_ploidy) / ((1-rho)*normal_ploidy+rho*psi), 2),
                               # the value for nullprobes is arbitrary (but doesn't matter, as these are not plotted anyway because BAF=0.5)
-                              ifelse(nullprobes, -10, gamma*log((rho * (nA+nB) + (1-rho)) / ((1-rho)*2+rho*psi), 2)))
+                              ifelse(nullprobes, -10, gamma*log((rho * (nA+nB) + (1-rho)) / ((1-rho)*normal_ploidy+rho*psi), 2)))
 
       bBacktransform = ifelse(diploidprobes,
-                              (1-rho+rho*nB) / (2-2*rho+ rho * (nA+nB)),
+                              (1-rho+rho*nB) / (normal_ploidy-normal_ploidy*rho+ rho * (nA+nB)),
                               ifelse(nullprobes, 0.5, 0))
 
       rConf = ifelse(abs(rBacktransform)>0.15, pmin(100, pmax(0, 100 * (1-abs(rBacktransform-r)/abs(r)))), NA)
@@ -795,7 +797,7 @@ make_segments = function(r, b) {
 
 # function to create the distance matrix (distance for a range of ploidy and tumor percentage values)
 # input: segmented LRR and BAF and the value for gamma
-create_distance_matrix = function(segments, gamma, min_ploidy=NULL, max_ploidy=NULL, min_purity=NULL, max_purity=NULL) {
+create_distance_matrix = function(segments, gamma, min_ploidy=NULL, max_ploidy=NULL, min_purity=NULL, max_purity=NULL, normal_ploidy=4) {
   s = segments
   # get ploidy boundaries
   if (is.null(min_ploidy) || is.null(max_ploidy)) {
@@ -820,8 +822,8 @@ create_distance_matrix = function(segments, gamma, min_ploidy=NULL, max_ploidy=N
     psi = psi_pos[i]
     for (j in 1:length(rho_pos)) {
       rho = rho_pos[j]
-      nA = (rho-1 - (s[, "b"]-1)*2^(s[, "r"]/gamma) * ((1-rho)*2+rho*psi))/rho
-      nB = (rho-1 + s[, "b"]*2^(s[, "r"]/gamma) * ((1-rho)*2+rho*psi))/rho
+      nA = ((rho-1)*normal_ploidy/2 - (s[, "b"]-1)*2^(s[, "r"]/gamma) * ((1-rho)*normal_ploidy+rho*psi))/rho
+      nB = ((rho-1)*normal_ploidy/2 + s[, "b"]*2^(s[, "r"]/gamma) * ((1-rho)*normal_ploidy+rho*psi))/rho
       # choose the minor allele
       nMinor = NULL
       if (sum(nA, na.rm=TRUE) < sum(nB, na.rm=TRUE)) {

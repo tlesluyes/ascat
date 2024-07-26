@@ -18,7 +18,8 @@ ascat.runAscat(
   psi_manual = NA,
   img.dir = ".",
   img.prefix = "",
-  write_segments = FALSE
+  write_segments = FALSE,
+  normal_ploidy = 2
 )
 }
 \arguments{
@@ -49,6 +50,8 @@ ascat.runAscat(
 \item{img.prefix}{prefix for figure names}
 
 \item{write_segments}{Optional flag to output segments in text files (.segments_raw.txt and .segments.txt under img.dir). Default=F}
+
+\item{normal_ploidy}{The normal ploidy. Default=2}
 }
 \value{
 an ASCAT output object, containing:\cr
